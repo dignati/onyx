@@ -7,7 +7,7 @@
 (defn read-buf [decompress-f buf]
   (let [msg-type ^byte (protocol/read-msg-type buf)] 
     (cond (= msg-type protocol/messages-type-id) 
-          (protocol/read-messages-buf decompress-f buf)
+          (protocol/read-messages-buf-nippy decompress-f buf)
           (= msg-type protocol/ack-type-id) 
           (protocol/read-acks-buf buf)
           (= msg-type protocol/completion-type-id) 
@@ -39,7 +39,7 @@
                             :ack-val 729233382010058362})]]
   (fact messages => 
         (read-buf decompress 
-                  (protocol/build-messages-msg-buf compress messages))))
+                  (protocol/build-messages-msg-buf-nippy compress messages))))
 
 (let [messages [(map->Leaf {:id #uuid "010a1688-47ff-4055-8da5-1f02247351e1"
                             :acker-id #uuid "bf8fd5fc-30fd-424c-af6a-0b32568581a4"
@@ -48,9 +48,9 @@
                             :ack-val 729233382010058362})]]
   (fact messages =>
         (read-buf decompress 
-                  (protocol/build-messages-msg-buf compress messages))))
+                  (protocol/build-messages-msg-buf-nippy compress messages))))
 
 (let [messages '()]
   (fact messages =>
         (read-buf decompress 
-                  (protocol/build-messages-msg-buf compress messages))))
+                  (protocol/build-messages-msg-buf-nippy compress messages))))

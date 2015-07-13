@@ -129,10 +129,17 @@
 
           (= msg-type protocol/messages-msg-id)
           (when-let [chs (get @virtual-peers peer-id)] 
-            (let [inbound-ch (:inbound-ch chs)] 
+            (let [inbound-ch (:inbound-ch chs)
+                  bs (byte-array (- length 3))
+                  _ (.getBytes ^UnsafeBuffer buffer offset bs)] 
+              ;(println (into [] bs))
               (>!! inbound-ch 
                    (fn [] 
-                     (protocol/read-messages-buf decompress-f buffer offset length)))))
+                     (decompress-f bs)
+                     ;(timbre/info "Inside: " offset length)
+                     ;(protocol/read-messages-buf decompress-f buffer offset length)
+                     
+                     ))))
 
           #_(let [segments (protocol/read-messages-buf decompress-f buffer offset length)]
             (when-let [chs (get @virtual-peers peer-id)] 
@@ -364,7 +371,7 @@
   (if ((:short-circuitable? messenger) channel) 
     (send-messages-short-circuit (short-circuit-ch messenger id :inbound-ch) batch)
     (let [pub ^Publication (get-publication messenger channel)
-          [len unsafe-buffer] (protocol/build-messages-msg-buf (:compress-f messenger) id batch)
+          [len unsafe-buffer] (protocol/build-messages-msg-buf-nippy (:compress-f messenger) id batch)
           offer-f (fn [] (.offer pub unsafe-buffer 0 len))
           idle-strategy (:send-idle-strategy messenger)]
       ;;; TODO: offer will return a particular code when the publisher is down

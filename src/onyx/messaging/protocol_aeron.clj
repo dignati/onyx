@@ -128,10 +128,8 @@
 
 (defn read-messages-buf [decompress-f ^UnsafeBuffer buf ^long offset length]
   (let [message-count (.getInt buf offset)
-        _ (timbre/info "Reading " message-count)
         offset (unchecked-add offset message-count-size)
         payload-size (.getInt buf offset)
-        _ (timbre/info "Reading payload-size " payload-size)
         offset (unchecked-add offset payload-size-size)
         ;; Performance consideration:
         ;; We would rather that we didn't need to allocate an additional
@@ -149,3 +147,18 @@
                             (unchecked-add offset message-base-length))
                      (persistent! messages)))]
     segments))
+
+(defn build-messages-msg-buf-nippy [compress-f peer-id messages]
+  (let [messages-bytes ^bytes (compress-f messages)
+        messages-bytes-count (alength messages-bytes)
+        buf-size (+ 3 messages-bytes-count)
+        buf (UnsafeBuffer. (byte-array buf-size))
+        _ (.putByte buf 0 messages-msg-id)
+        _ (write-vpeer-id buf 1 peer-id)
+        _ (.putBytes buf 3 messages-bytes)] 
+    (list buf-size buf)))
+
+(defn read-messages-buf-nippy [decompress-f ^UnsafeBuffer buf ^long offset length]
+  (let [messages-bytes (byte-array (- length 3))
+        _ (.getBytes buf offset messages-bytes)]
+    (decompress-f messages-bytes)))
