@@ -128,8 +128,10 @@
 
 (defn read-messages-buf [decompress-f ^UnsafeBuffer buf ^long offset length]
   (let [message-count (.getInt buf offset)
+        _ (timbre/info "Reading " message-count)
         offset (unchecked-add offset message-count-size)
         payload-size (.getInt buf offset)
+        _ (timbre/info "Reading payload-size " payload-size)
         offset (unchecked-add offset payload-size-size)
         ;; Performance consideration:
         ;; We would rather that we didn't need to allocate an additional
