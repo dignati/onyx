@@ -128,7 +128,13 @@
               (>!! (:acking-ch chs) ack)))
 
           (= msg-type protocol/messages-msg-id)
-          (let [segments (protocol/read-messages-buf decompress-f buffer offset length)]
+          (when-let [chs (get @virtual-peers peer-id)] 
+            (let [inbound-ch (:inbound-ch chs)] 
+              (>!! inbound-ch 
+                   (fn [] 
+                     (protocol/read-messages-buf decompress-f buffer offset length)))))
+
+          #_(let [segments (protocol/read-messages-buf decompress-f buffer offset length)]
             (when-let [chs (get @virtual-peers peer-id)] 
               (let [inbound-ch (:inbound-ch chs)] 
                 (doseq [segment segments]
@@ -272,21 +278,14 @@
            :compress-f nil :decompress-f nil :send-idle-strategy nil
            :subscriber nil)))
 
-(Math/pow 2 16)
-(mod -30000 65536)
-
-(defn free-consistent-hash [existing v]
-  (let [initial-set (set (range 1 2) #_(range -32767 32766))] 
-    (loop [hs (hash (java.util.UUID/randomUUID))]
-      (let [mod-signed (- (mod hs 65536)
-                          32768)] 
-        (if (initial-set mod-signed)
-          (recur (hash hs))
-          mod-signed)))))
-
-(map short 
-     (for [v (range 1000000)]
-       (free-consistent-hash nil v)))
+; (defn free-consistent-hash [existing v]
+;   (let [initial-set (set (range 1 2) #_(range -32767 32766))] 
+;     (loop [hs (hash (java.util.UUID/randomUUID))]
+;       (let [mod-signed (- (mod hs 65536)
+;                           32768)] 
+;         (if (initial-set mod-signed)
+;           (recur (hash hs))
+;           mod-signed)))))
 
 (defn aeron-peer-group [opts]
   (map->AeronPeerGroup {:opts opts}))
@@ -338,7 +337,11 @@
         batch-size (long (:onyx/batch-size task-map))
         ms (arg-or-default :onyx/batch-timeout task-map)
         timeout-ch (timeout ms)]
-    (loop [segments [] i 0]
+    (if-let [v (first (alts!! [ch timeout-ch]))]
+      (v)
+      '())
+
+    #_(loop [segments [] i 0]
       (if (< i batch-size)
         (if-let [v (first (alts!! [ch timeout-ch]))]
           (recur (conj segments v) (inc i))
